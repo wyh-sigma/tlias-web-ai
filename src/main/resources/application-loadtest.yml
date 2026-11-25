@@ -1,0 +1,43 @@
+# 压测专用 profile：假模型 + 放开限流 + 完整指标
+# 用途：在不花钱、不触发供应商限流的前提下，把自身代码（拦截器/Redis 记忆/RAG 检索/SSE 转发）压到上限
+spring:
+  # loadtest 可以单独激活，因此这里自带数据源；默认指向 docker compose 里映射到 3307 的 MySQL
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/alias?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123456}
+  ai:
+    model:
+      # 关掉真实模型自动配置，改用 MockAiConfig 提供的 @Primary 假模型
+      chat: none
+      embedding: none
+    deepseek:
+      api-key: loadtest-dummy-key
+    openai:
+      api-key: loadtest-dummy-key
+
+tlias:
+  jwt:
+    secret: ${JWT_SECRET:loadtest-only-secret-key-32-bytes-long!!}
+  rag:
+    # 假向量维度与真实 embedding 不同，必须用独立文件，否则会与 prod 的向量库互相覆盖
+    store-path: data/vector-store-loadtest.json
+  # 指标标签上显示的模型名
+  ai:
+    model-name: mock-loadtest
+    # 压测时放开限流，否则 20 次/分钟根本压不起来；限流逻辑本身由 429 专项场景验证
+    rate-limit:
+      per-minute: 1000000
+      window-seconds: 60
+    cost:
+      input-per-million: 0
+      output-per-million: 0
+  # 假模型每块延迟与块数，用来模拟真实流式节奏
+  loadtest:
+    chunk-delay-ms: 20
+    chunk-count: 30
+
+logging:
+  level:
+    com.wyh: info

@@ -1,0 +1,7 @@
+package com.wyh.security;
+
+/**
+ * 认证通过后放入 SecurityContext 的当前用户信息。
+ */
+public record AuthUser(Long id, String username, String name, String role) {
+}

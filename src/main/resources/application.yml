@@ -1,0 +1,84 @@
+spring:
+  application:
+    name: tlias-web-ai
+  # 默认本地环境；生产通过 SPRING_PROFILES_ACTIVE=prod 切换
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  # 认证完全由 JWT 过滤器处理，不需要 Spring Security 默认的内存用户
+  autoconfigure:
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  servlet:
+    multipart:
+      max-file-size: 10MB      # 单个文件大小限制
+      max-request-size: 100MB
+  # Redis：对话记忆持久化与限流
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3s
+  # 数据库版本管理：已有库基线到 V2，新库从 V1 全量执行
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 2
+    validate-on-migrate: true
+  ai:
+    model:
+      chat: deepseek
+      embedding: openai
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY}
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.3
+          max-tokens: 2048
+          top-p: 1.0
+    openai:
+      api-key: ${DASHSCOPE_API_KEY}
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      embedding:
+        options:
+          model: text-embedding-v4
+
+
+# MyBatis 公共配置
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+  mapper-locations: classpath:mapper/*.xml
+
+aliyun:
+  oss:
+    region: cn-beijing       # 替换为你的Bucket所在地域（如 cn-hangzhou）
+    bucket-name: sigma-java-ai  # 替换为你的Bucket名称
+
+# JWT 有效期，密钥在 application-local.yml / application-prod.yml 中配置
+tlias:
+  jwt:
+    expiration: ${JWT_EXPIRATION:7200000}
+
+# 健康检查与指标：Prometheus 从 /actuator/prometheus 采集
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    version: 0.0.1

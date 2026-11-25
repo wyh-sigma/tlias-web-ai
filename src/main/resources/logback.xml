@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="tlias-web-ai"/>
+
+    <!-- 控制台：给人看，保留 traceId -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{50}-%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 文件：给机器看，一行一个 JSON，带 traceId / app / 异常堆栈，便于 Loki、ELK、ClickHouse 采集 -->
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <FileNamePattern>./logs/tlias-%d{yyyy-MM-dd}-%i.json.log</FileNamePattern>
+            <MaxHistory>14</MaxHistory>
+            <maxFileSize>50MB</maxFileSize>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdc>true</includeMdc>
+            <includeContext>false</includeContext>
+            <customFields>{"app":"${APP_NAME}"}</customFields>
+            <fieldNames>
+                <timestamp>@timestamp</timestamp>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+            </fieldNames>
+        </encoder>
+    </appender>
+
+    <!-- 压测时日志量很大，异步写盘避免日志成为瓶颈；队列满时丢弃而不是阻塞业务 -->
+    <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="JSON_FILE"/>
+        <queueSize>8192</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+    </appender>
+
+    <!-- 高并发下这些框架的 INFO 日志会淹没业务日志 -->
+    <logger name="org.apache.ibatis" level="INFO"/>
+    <logger name="com.zaxxer.hikari" level="INFO"/>
+    <logger name="reactor.netty" level="WARN"/>
+    <logger name="io.netty" level="WARN"/>
+
+    <root level="info">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="ASYNC_JSON_FILE"/>
+    </root>
+</configuration>

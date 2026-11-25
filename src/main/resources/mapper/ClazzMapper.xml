@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wyh.mapper.ClazzMapper">
+
+    <!-- 1. 条件分页查询所有班级（包含班主任姓名） -->
+    <select id="selectAll" resultType="com.wyh.pojo.Clazz">
+        SELECT clazz.*, emp.name AS masterName,
+        (CASE
+        WHEN NOW() &lt; clazz.begin_date THEN 1
+        WHEN NOW() &gt; clazz.end_date THEN 3
+        ELSE 2
+        END) AS status
+        FROM clazz
+        LEFT JOIN emp ON clazz.master_id = emp.id
+        <where>
+            <!-- 按班级名称模糊查询 -->
+            <if test="name != null and name != ''">
+                AND clazz.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <!-- 按开课时间范围查询 -->
+            <if test="beginDate != null">
+                AND clazz.begin_date &gt;= #{beginDate}
+            </if>
+            <if test="endDate != null">
+                AND clazz.begin_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY clazz.id
+    </select>
+
+    <!-- 2. 根据ID查询班级（用于修改回显） -->
+    <select id="selectById" resultType="com.wyh.pojo.Clazz">
+        SELECT clazz.*, emp.name AS masterName,
+        (CASE
+        WHEN NOW() &lt; clazz.begin_date THEN 1
+        WHEN NOW() &gt; clazz.end_date THEN 3
+        ELSE 2
+        END) AS status
+        FROM clazz
+        LEFT JOIN emp ON clazz.master_id = emp.id
+        WHERE clazz.id = #{id}
+    </select>
+
+    <!-- 3. 新增班级 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="clazz.id">
+        INSERT INTO clazz (
+        name, room, begin_date, end_date, master_id, subject, create_time, update_time
+        ) VALUES (
+        #{clazz.name}, #{clazz.room}, #{clazz.beginDate}, #{clazz.endDate},
+        #{clazz.masterId}, #{clazz.subject}, #{clazz.createTime}, #{clazz.updateTime}
+        )
+    </insert>
+
+    <!-- 4. 动态修改班级信息 -->
+    <update id="update">
+        UPDATE clazz
+        <set>
+            <if test="clazz.name != null and clazz.name != ''">
+                name = #{clazz.name},
+            </if>
+            <if test="clazz.room != null ">
+                room = #{clazz.room},
+            </if>
+            <if test="clazz.beginDate != null">
+                begin_date = #{clazz.beginDate},
+            </if>
+            <if test="clazz.endDate != null">
+                end_date = #{clazz.endDate},
+            </if>
+            master_id = #{clazz.masterId},
+            <if test="clazz.subject != null">
+                subject = #{clazz.subject},
+            </if>
+            update_time = #{clazz.updateTime}
+        </set>
+        WHERE id = #{clazz.id}
+    </update>
+
+    <!-- 5. 根据ID删除班级 -->
+    <delete id="deleteById">
+        DELETE FROM clazz WHERE id = #{id}
+    </delete>
+
+    <!-- 6. 查询所有班主任（用于下拉选择） -->
+    <select id="findAllTeacher" resultType="com.wyh.pojo.Emp">
+        SELECT id, name FROM emp WHERE job = 1
+    </select>
+    <!-- 7. 根据ID查询学生（用于查询数量） -->
+    <select id="countByClazzId" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM student
+        WHERE clazz_id = #{id}
+    </select>
+    <!-- 8. 根据ID查询班级（用于详情回显） -->
+    <select id="selectByIdForDetail" resultType="com.wyh.pojo.Clazz">
+        SELECT clazz.*, emp.name AS masterName
+        FROM clazz
+        LEFT JOIN emp ON clazz.master_id = emp.id
+        WHERE clazz.id = #{id}
+    </select>
+
+</mapper>

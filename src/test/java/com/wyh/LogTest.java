@@ -1,0 +1,24 @@
+package com.wyh; // 注意：这里的包名要换成你自己项目对应的，比如 com.wyh
+
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
+
+public class LogTest {
+    private static final Logger logger = LoggerFactory.getLogger(LogTest.class);
+    @Test
+    public void testLog() {
+        logger.info("开始计算...");
+
+        int sum = 0;
+        int[] nums = {1, 5, 3, 2, 1, 4, 5, 4, 6, 7, 4, 34, 2, 23};
+        for (int num : nums) {
+            sum += num;
+        }
+        logger.info("计算结果为: {}", sum);
+        logger.info("结束计算...");
+
+    }
+}

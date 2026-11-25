@@ -1,0 +1,45 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### Local config & secrets ###
+application-local.yml
+config/application-local.yml
+.env
+
+### Runtime generated ###
+# 向量库落盘文件，由 KnowledgeBaseInitializer 启动时重建，不入库
+data/
+logs/
+hs_err_pid*.log
+loadtest/server-metrics.csv
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/

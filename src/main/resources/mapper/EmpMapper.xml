@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace 必须写你 Mapper 接口的全限定名 -->
+<mapper namespace="com.wyh.mapper.EmpMapper">
+
+    <select id="getEmps" resultType="com.wyh.pojo.Emp">
+        SELECT emp.id, emp.username, emp.name, emp.gender, emp.phone,
+        emp.job, emp.salary, emp.image, emp.entry_date, emp.dept_id,
+        emp.create_time, emp.update_time,
+        dept.name AS deptName
+        FROM emp
+        LEFT JOIN dept ON emp.dept_id = dept.id
+        <where>
+            <!-- 1. 姓名：模糊查询 -->
+            <if test="empQueryParam.name != null and empQueryParam.name != ''">
+                AND emp.name LIKE CONCAT('%', #{empQueryParam.name}, '%')
+            </if>
+            <!-- 2. 性别：精确查询 -->
+            <if test="empQueryParam.gender != null">
+                AND emp.gender = #{empQueryParam.gender}
+            </if>
+            <!-- 3. 入职日期：范围查询 -->
+            <if test="empQueryParam.begin != null">
+                AND emp.entry_date &gt;= #{empQueryParam.begin}
+            </if>
+            <if test="empQueryParam.end != null">
+                AND emp.entry_date &lt;= #{empQueryParam.end}
+            </if>
+        </where>
+        ORDER BY emp.update_time DESC
+    </select>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO emp (
+        username, password, name, gender, phone,
+        job, salary, image, entry_date, dept_id,
+        create_time, update_time
+        ) VALUES (
+        #{username}, #{password}, #{name}, #{gender}, #{phone},
+        #{job}, #{salary}, #{image}, #{entryDate}, #{deptId},
+        #{createTime}, #{updateTime}
+        )
+    </insert>
+    <delete id="deleteEmpByIds">
+        DELETE FROM emp WHERE id IN
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <update id="updateEmp">
+        UPDATE emp
+        <set>
+            <if test="emp.name != null and emp.name != ''">
+                name = #{emp.name},
+            </if>
+            <if test="emp.gender != null">
+                gender = #{emp.gender},
+            </if>
+            <if test="emp.username != null and emp.username != ''">
+                username = #{emp.username},
+            </if>
+            <if test="emp.entryDate != null">
+                entry_date = #{emp.entryDate},
+            </if>
+            <if test="emp.phone != null and emp.phone != ''">
+                phone = #{emp.phone},
+            </if>
+            <if test="emp.job != null and emp.job != ''">
+                job = #{emp.job},
+            </if>
+            <if test="emp.salary != null">
+                salary = #{emp.salary},
+            </if>
+            <if test="emp.image != null and emp.image != ''">
+                image = #{emp.image},
+            </if>
+            <if test="emp.deptId != null">
+                dept_id = #{emp.deptId},
+            </if>
+            update_time = #{emp.updateTime}
+        </set>
+        WHERE id = #{emp.id}
+    </update>
+    <select id="getEmpById" resultType="com.wyh.pojo.Emp">
+        SELECT emp.id, emp.username, emp.name, emp.gender, emp.phone,
+        emp.job, emp.salary, emp.image, emp.entry_date, emp.dept_id,
+        emp.create_time, emp.update_time,
+        dept.name AS deptName
+        FROM emp
+        LEFT JOIN dept ON emp.dept_id = dept.id
+        WHERE emp.id = #{id}
+    </select>
+    <select id="getAuthByUsername" resultType="com.wyh.pojo.Emp">
+        SELECT emp.id, emp.username, emp.name, emp.password, emp.role
+        FROM emp
+        WHERE emp.username = #{username}
+    </select>
+    <select id="getAuthById" resultType="com.wyh.pojo.Emp">
+        SELECT emp.id, emp.username, emp.name, emp.role
+        FROM emp
+        WHERE emp.id = #{id}
+    </select>
+    <update id="updatePassword">
+        UPDATE emp
+        SET password = #{password}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+    <select id="getEmpByName" resultType="com.wyh.pojo.Emp">
+        SELECT emp.id, emp.username, emp.name, emp.gender, emp.phone,
+        emp.job, emp.salary, emp.image, emp.entry_date, emp.dept_id,
+        emp.create_time, emp.update_time,
+        dept.name AS deptName
+        FROM emp
+        LEFT JOIN dept ON emp.dept_id = dept.id
+        WHERE emp.username = #{username}
+    </select>
+
+
+</mapper>

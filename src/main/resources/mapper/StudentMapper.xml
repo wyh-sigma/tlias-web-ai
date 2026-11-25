@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wyh.mapper.StudentMapper">
+    <select id="countByNo" resultType="int">
+        SELECT COUNT(*) FROM student
+        WHERE no = #{no}
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+    <select id="countByPhone" resultType="int">
+        SELECT COUNT(*) FROM student
+        WHERE phone = #{phone}
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+
+    <select id="countByIdCard" resultType="int">
+        SELECT COUNT(*) FROM student
+        WHERE id_card = #{idCard}
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+
+
+    <!-- 1. 条件查询所有学生（包含班级名称） -->
+    <select id="selectAll" resultType="com.wyh.pojo.Student">
+        SELECT s.*, c.name AS clazzName
+        FROM student s
+        LEFT JOIN clazz c ON s.clazz_id = c.id
+        <where>
+            <!-- 按学生姓名模糊查询 -->
+            <if test="studentQueryParam.name != null and studentQueryParam.name != ''">
+                AND s.name LIKE CONCAT('%', #{studentQueryParam.name}, '%')
+            </if>
+            <!-- 按学历精确查询 -->
+            <if test="studentQueryParam.degree != null ">
+                AND s.degree = #{studentQueryParam.degree}
+            </if>
+            <!-- 按班级ID精确查询 -->
+            <if test="studentQueryParam.clazzName != null and studentQueryParam.clazzName != ''">
+                AND c.name LIKE CONCAT('%', #{studentQueryParam.clazzName}, '%')
+            </if>
+        </where>
+        ORDER BY s.id
+    </select>
+
+    <!-- 2. 根据ID查询学生（用于修改回显） -->
+    <select id="selectById" resultType="com.wyh.pojo.Student">
+        SELECT s.*, c.name AS clazzName
+        FROM student s
+        LEFT JOIN clazz c ON s.clazz_id = c.id
+        WHERE s.id = #{id}
+    </select>
+
+    <!-- 3. 新增学生 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="student.id">
+        INSERT INTO student (
+        name, no, gender, phone,
+        id_card, is_college, address, degree, graduation_date,
+        clazz_id, violation_count, violation_score,
+        create_time, update_time
+        ) VALUES (
+        #{student.name}, #{student.no}, #{student.gender}, #{student.phone},
+        #{student.idCard}, #{student.isCollege}, #{student.address}, #{student.degree}, #{student.graduationDate},
+        #{student.clazzId}, #{student.violationCount}, #{student.violationScore},
+        #{student.createTime}, #{student.updateTime}
+        )
+    </insert>
+
+    <!-- 4. 动态修改学生信息 -->
+    <update id="update">
+        UPDATE student
+        <set>
+            <if test="student.name != null and student.name != ''">
+                name = #{student.name},
+            </if>
+            <if test="student.no != null and student.no != ''">
+                no = #{student.no},
+            </if>
+            <if test="student.gender != null ">
+                gender = #{student.gender},
+            </if>
+            <if test="student.phone != null and student.phone != ''">
+                phone = #{student.phone},
+            </if>
+            <!-- 补齐了身份证号 -->
+            <if test="student.idCard != null and student.idCard != ''">
+                id_card = #{student.idCard},
+            </if>
+            <!-- 补齐了是否院校 -->
+            <if test="student.isCollege != null ">
+                is_college = #{student.isCollege},
+            </if>
+            <!-- 补齐了联系地址 -->
+            <if test="student.address != null and student.address != ''">
+                address = #{student.address},
+            </if>
+
+            <if test="student.degree != null ">
+                degree = #{student.degree},
+            </if>
+            <if test="student.graduationDate != null ">
+                graduation_date = #{student.graduationDate},
+            </if>
+            <if test="student.clazzId != null ">
+                clazz_id = #{student.clazzId},
+            </if>
+            <if test="student.violationCount != null ">
+                violation_count = #{student.violationCount},
+            </if>
+            <if test="student.violationScore != null">
+                violation_score = #{student.violationScore},
+            </if>
+
+            update_time = #{student.updateTime}
+        </set>
+        WHERE id = #{student.id}
+    </update>
+
+    <!-- 5. 批量删除学生 -->
+    <delete id="deleteBatchIds">
+        DELETE FROM student WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <!-- 6. 获取所有班级列表 -->
+    <select id="getClazzList" resultType="com.wyh.pojo.Clazz">
+        SELECT id, name
+        FROM clazz
+    </select>
+    <!-- 7. 处理违规学生 -->
+    <update id="updateViolation">
+        UPDATE student
+        <set>
+            <!-- 核心：直接在数据库里累加，防止并发问题 -->
+            <if test="violationCount != null ">
+                violation_count = violation_count + #{violationCount},
+            </if>
+            <if test="violationScore != null ">
+                violation_score = violation_score + #{violationScore},
+            </if>
+            update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+    <!-- 8. 通过名字查询学生 -->
+    <select id="selectByName" resultType="com.wyh.pojo.Student">
+        SELECT * FROM student WHERE name = #{name}
+    </select>
+
+</mapper>

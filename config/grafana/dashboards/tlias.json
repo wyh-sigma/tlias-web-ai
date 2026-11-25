@@ -1,0 +1,226 @@
+{
+  "uid": "tlias-overview",
+  "title": "Tlias 运行监控（HTTP + AI）",
+  "tags": ["tlias", "ai"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "实例",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(tlias_http_requests_seconds_count, instance)",
+        "definition": "label_values(tlias_http_requests_seconds_count, instance)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "refresh": 1,
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "QPS（总请求）",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(tlias_http_requests_seconds_count{instance=~\"$instance\"}[1m]))",
+          "legendFormat": "QPS"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "5xx 错误率",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(tlias_http_responses_total{instance=~\"$instance\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(tlias_http_responses_total{instance=~\"$instance\"}[5m])), 1)",
+          "legendFormat": "5xx 占比"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "AI 并发对话数",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+      "targets": [
+        { "refId": "A", "expr": "sum(tlias_ai_inflight{instance=~\"$instance\"})", "legendFormat": "进行中" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "接口延迟 p95 / p99（按路径）",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 0, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(tlias_http_requests_seconds_bucket{instance=~\"$instance\"}[5m])))",
+          "legendFormat": "p95 {{uri}}"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum by (le, uri) (rate(tlias_http_requests_seconds_bucket{instance=~\"$instance\"}[5m])))",
+          "legendFormat": "p99 {{uri}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "AI 延迟 p95：总耗时 vs 首字（TTFT）",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(tlias_ai_chat_seconds_bucket{instance=~\"$instance\"}[5m])))",
+          "legendFormat": "总耗时 p95"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(tlias_ai_chat_ttft_seconds_bucket{instance=~\"$instance\"}[5m])))",
+          "legendFormat": "首字 p95"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "AI 结果分布（success / error / aborted / rate_limited）",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (outcome) (rate(tlias_ai_requests_total{instance=~\"$instance\"}[5m]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Token 速率（prompt / completion）",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (type) (rate(tlias_ai_tokens_total{instance=~\"$instance\"}[5m]))",
+          "legendFormat": "{{type}} tokens/s"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "成本速率（元/分钟）",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyCNY", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(tlias_ai_cost_total{instance=~\"$instance\"}[1m])) * 60",
+          "legendFormat": "元/分钟"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "限流（429）与兜底次数",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(tlias_ai_ratelimited_total{instance=~\"$instance\"}[5m]))",
+          "legendFormat": "限流"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (reason) (rate(tlias_ai_fallback_total{instance=~\"$instance\"}[5m]))",
+          "legendFormat": "兜底 {{reason}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "数据库连接池等待与 Tomcat 忙线程（饱和度）",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(hikaricp_connections_pending{instance=~\"$instance\"})",
+          "legendFormat": "连接池等待线程"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(tomcat_threads_busy_threads{instance=~\"$instance\"})",
+          "legendFormat": "Tomcat 忙线程"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "JVM 堆内存",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\"})",
+          "legendFormat": "used"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(jvm_memory_max_bytes{instance=~\"$instance\",area=\"heap\"})",
+          "legendFormat": "max"
+        }
+      ]
+    }
+  ]
+}

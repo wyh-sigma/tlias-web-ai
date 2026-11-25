@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wyh.mapper.ReportMapper">
+
+    <!-- 1. 员工职位人数统计 -->
+    <select id="getEmpJobData" resultType="java.util.Map">
+        SELECT
+        (CASE job
+        WHEN 1 THEN '班主任'
+        WHEN 2 THEN '讲师'
+        WHEN 3 THEN '学工主管'
+        WHEN 4 THEN '教研主管'
+        WHEN 5 THEN '咨询师'
+        ELSE '其他'
+        END) AS jobName,
+        COUNT(*) AS num
+        FROM emp
+        WHERE job IS NOT NULL
+        GROUP BY job
+        ORDER BY job
+    </select>
+
+    <!-- 2. 学生学历比例统计 -->
+    <select id="getStudentEducationData" resultType="java.util.Map">
+        SELECT
+        (CASE degree
+        WHEN 1 THEN '初中'
+        WHEN 2 THEN '高中'
+        WHEN 3 THEN '大专'
+        WHEN 4 THEN '本科'
+        WHEN 5 THEN '硕士'
+        WHEN 6 THEN '博士'
+        ELSE '其他'
+        END) AS name,
+        COUNT(*) AS value
+        FROM student
+        WHERE degree IS NOT NULL
+        GROUP BY degree
+        ORDER BY degree
+    </select>
+
+    <!-- 3. 每个班级有多少学生 -->
+    <select id="getClazzStudentCount" resultType="java.util.Map">
+        SELECT
+        c.id AS clazzId,
+        c.name AS clazzName,
+        c.room AS room,
+        IFNULL(e.name, '未分配') AS masterName,
+        COUNT(s.id) AS studentCount
+        FROM clazz c
+        LEFT JOIN emp e ON c.master_id = e.id
+        LEFT JOIN student s ON s.clazz_id = c.id
+        GROUP BY c.id, c.name, c.room, e.name
+        ORDER BY studentCount DESC, c.id
+    </select>
+
+    <!-- 4. 结课预警：30 天内会结课的班级 -->
+    <select id="getClazzFinishWarning" resultType="java.util.Map">
+        SELECT
+        c.id AS clazzId,
+        c.name AS clazzName,
+        c.end_date AS endDate,
+        DATEDIFF(c.end_date, CURDATE()) AS remainDays,
+        IFNULL(e.name, '未分配') AS masterName,
+        COUNT(s.id) AS studentCount
+        FROM clazz c
+        LEFT JOIN emp e ON c.master_id = e.id
+        LEFT JOIN student s ON s.clazz_id = c.id
+        WHERE c.end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY c.id, c.name, c.end_date, e.name
+        ORDER BY c.end_date ASC
+    </select>
+
+    <!-- 5. 违纪排行：按违纪扣分倒序 -->
+    <select id="getViolationRanking" resultType="java.util.Map">
+        SELECT
+        s.id AS studentId,
+        s.name AS studentName,
+        s.no AS studentNo,
+        IFNULL(c.name, '未分配') AS clazzName,
+        s.violation_count AS violationCount,
+        s.violation_score AS violationScore
+        FROM student s
+        LEFT JOIN clazz c ON s.clazz_id = c.id
+        WHERE s.violation_score > 0
+        ORDER BY s.violation_score DESC, s.violation_count DESC
+        LIMIT 10
+    </select>
+
+    <!-- 6. 高危学生清单：违纪扣分 >= 5 或违纪次数 >= 3 -->
+    <select id="getHighRiskStudents" resultType="java.util.Map">
+        SELECT
+        s.id AS studentId,
+        s.name AS studentName,
+        s.no AS studentNo,
+        s.phone AS phone,
+        IFNULL(c.name, '未分配') AS clazzName,
+        s.violation_count AS violationCount,
+        s.violation_score AS violationScore
+        FROM student s
+        LEFT JOIN clazz c ON s.clazz_id = c.id
+        WHERE s.violation_score >= 5 OR s.violation_count >= 3
+        ORDER BY s.violation_score DESC, s.violation_count DESC
+        LIMIT 50
+    </select>
+
+    <!-- 7. 每个班主任带的学生人数 -->
+    <select id="getMasterStudentCount" resultType="java.util.Map">
+        SELECT
+        e.id AS masterId,
+        e.name AS masterName,
+        COUNT(DISTINCT c.id) AS clazzCount,
+        COUNT(s.id) AS studentCount
+        FROM emp e
+        LEFT JOIN clazz c ON c.master_id = e.id
+        LEFT JOIN student s ON s.clazz_id = c.id
+        WHERE e.job = 1
+        GROUP BY e.id, e.name
+        ORDER BY studentCount DESC
+    </select>
+
+</mapper>

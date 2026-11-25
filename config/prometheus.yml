@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # 正常实例（prod profile，8080）
+  - job_name: tlias-app
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app:8080"]
+        labels:
+          instance: prod
+
+  # 压测实例（loadtest profile，8081）。未启用 loadtest profile 时该 target 显示 DOWN，属正常
+  - job_name: tlias-loadtest
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app-loadtest:8080"]
+        labels:
+          instance: loadtest
